@@ -38,6 +38,12 @@ def _comma_separated_pairs(pairs):
         for k, v in pairs.items()
     ])
 
+def _space_separated_pairs(pairs):
+    return ''.join([
+        "{} \"{}\"".format(k, v)
+        for k, v in pairs.items()
+    ])
+
 def _generator_provider(ctx):
     codegen_provider = "openapi"
     if "io_swagger_swagger_codegen_cli" in ctx.file.codegen_cli.path:
@@ -53,10 +59,10 @@ def _is_openapi_codegen(ctx):
 def _openapi_major_version(ctx):
     name = ctx.file.codegen_cli.path.split('/').pop(-1) # Extract JAR's name
     # name should look like openapi-generator-cli-5.0.0.jar
-    # 1. Split on - and take the last part (5.0.0.jar) 
+    # 1. Split on - and take the last part (5.0.0.jar)
     # 2. Remove the .jar and split on the '.'
     # 3. Take the first element of the list (major)
-    version = name.split("-").pop(-1).replace(".jar", "").split(".").pop(0) # 
+    version = name.split("-").pop(-1).replace(".jar", "").split(".").pop(0) #
     return int(version) if version.isdigit() else None
 
 def _new_generator_command(ctx, gen_dir, rjars):
@@ -108,6 +114,10 @@ def _new_generator_command(ctx, gen_dir, rjars):
         mappings = _comma_separated_pairs(ctx.attr.type_mappings),
     )
 
+    if ctx.attr.additional_cli_args:
+        gen_cmd += ' {args}'.format(
+            args = _space_separated_pairs(ctx.attr.additional_cli_args)
+       )
     if ctx.attr.api_package:
         gen_cmd += " --api-package {package}".format(
             package = ctx.attr.api_package,
@@ -233,6 +243,10 @@ openapi_gen = rule(
             default = Label("//external:io_bazel_rules_openapi/dependency/openapi-cli"),
             allow_single_file = True,
         ),
+        "additional_cli_args": attr.string_dict(
+            allow_empty = True,
+            default = {}
+        )
     },
     outputs = {
         "codegen": "%{name}_codegen.srcjar",
